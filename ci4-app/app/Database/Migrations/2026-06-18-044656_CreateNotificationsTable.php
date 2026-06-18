@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Database\Migrations;
+
+use CodeIgniter\Database\Migration;
+
+class CreateNotificationsTable extends Migration
+{
+    public function up()
+    {
+        $this->forge->dropTable('notifications', true);
+        $this->forge->addField([
+            'id' => [
+                'type' => 'INT',
+                'constraint' => 11,
+                'unsigned' => true,
+                'auto_increment' => true,
+            ],
+            'message' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+            ],
+            'level' => [
+                'type' => 'VARCHAR',
+                'constraint' => 50,
+                'default' => 'info',
+            ],
+            'created_at' => [
+                'type' => 'DATETIME',
+                'null' => true,
+            ],
+            'updated_at' => [
+                'type' => 'DATETIME',
+                'null' => true,
+            ],
+        ]);
+        $this->forge->addKey('id', true);
+        $this->forge->createTable('notifications');
+    }
+
+    public function down()
+    {
+        $this->forge->dropTable('notifications');
+    }
+}
