@@ -12,13 +12,21 @@ class UserModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['name', 'email', 'password', 'role'];
-
-    protected bool $allowEmptyInserts = false;
+    protected $allowedFields    = ['name', 'email', 'password', 'role', 'is_active'];
 
     // Dates
     protected $useTimestamps = true;
     protected $dateFormat    = 'datetime';
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
+
+    // Validation
+    protected $validationRules      = [
+        'email'    => 'required|valid_email|is_unique[users.email,id,{id}]',
+        'password' => 'required|min_length[6]',
+        'role'     => 'required|in_list[admin,guru,siswa]'
+    ];
+    protected $validationMessages   = [];
+    protected $skipValidation       = false;
+    protected $cleanValidationRules = true;
 }

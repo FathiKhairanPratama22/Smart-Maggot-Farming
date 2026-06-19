@@ -1,5 +1,5 @@
 #include <WiFi.h>
-#include <PubSubClient.h>
+#include <HTTPClient.h>         // Kita ganti PubSubClient (MQTT) jadi HTTPClient
 #include "DHT.h"
 #include <LiquidCrystal_I2C.h>
 
@@ -10,13 +10,12 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define DHTTYPE DHT11 // Jenis sensor yang dipakai
 #define LED_PIN 5    // Pin untuk Lampu LED Alert
 
-// Konfigurasi WiFi dan MQTT
-const char* ssid = "AAFATHI"; 
-const char* password = "mamahfathi";
-const char* mqtt_server = "192.168.100.14"; 
+// Konfigurasi WiFi dan API CI4
+const char* ssid = "PUNYA ORANG"; 
+const char* password = "punyafathi22";
+// PASTIKAN IP 192.168.100.14 INI BENAR ADALAH IP LAPTOP YOGA 6 KAMU!
+const char* serverName = "http://192.168.100.14:8080/api/sensor"; 
 
-WiFiClient espClient;
-PubSubClient client(espClient);
 DHT dht(DHTPIN, DHTTYPE);
 
 void setup_wifi() {
@@ -31,23 +30,10 @@ void setup_wifi() {
   }
   Serial.println("");
   Serial.println("WiFi Terhubung!");
+  Serial.print("IP Address ESP32: ");
+  Serial.println(WiFi.localIP());
 }
 
-void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Mencoba terhubung ke MQTT Broker... ");
-    if (client.connect("ESP32Client")) {
-      Serial.println("BERHASIL!");
-    } else {
-      Serial.print("Gagal, status=");
-      Serial.print(client.state());
-      Serial.println(" -> Coba lagi dalam 5 detik");
-      delay(5000);
-    }
-  }
-}
-
-// INI FUNGSI YANG TADI TIDAK SENGAJA TERHAPUS
 void setup() {
   Serial.begin(115200);
   
@@ -55,7 +41,6 @@ void setup() {
   digitalWrite(LED_PIN, LOW); 
   
   setup_wifi();
-  client.setServer(mqtt_server, 1883); 
   dht.begin();
 
   pinMode(BUZZER_PIN, OUTPUT);
@@ -66,24 +51,15 @@ void setup() {
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
-
   // Membaca data suhu dan kelembaban
   float t = dht.readTemperature();
   float h = dht.readHumidity();
 
   if (isnan(t) || isnan(h)) {
-    Serial.println("Gagal membaca sensor DHT11!");
+    Serial.println("Gagal membaca sensor DHT11! Cek kabel.");
     delay(2000);
     return;
   }
-
-  // Mengirim payload JSON ke MQTT Laptop
-  String payload = "{\"temp\":" + String(t) + ",\"hum\":" + String(h) + "}";
-  client.publish("iot/sensor", payload.c_str());
 
   // Tampilkan di Serial Monitor
   Serial.print("Suhu: ");
@@ -92,7 +68,7 @@ void loop() {
   Serial.print(h);
   Serial.println(" %");
 
-  // Tampilkan langsung ke LCD tanpa harus menunggu delay
+  // Tampilkan langsung ke LCD
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Suhu: ");
@@ -104,7 +80,7 @@ void loop() {
   lcd.print(h);
   lcd.print(" %");
 
-  // Logika Peringatan (Alert)
+  // Logika Peringatan (Alert) Lokal
   if (t > 30.0) {
     digitalWrite(LED_PIN, HIGH);
     digitalWrite(BUZZER_PIN, HIGH); // Buzzer bunyi
@@ -114,5 +90,31 @@ void loop() {
     digitalWrite(BUZZER_PIN, LOW);  // Buzzer mati
   }
 
-  delay(3000); 
+  // =========================================================
+  // PENGIRIMAN DATA KE WEB CI4
+  // =========================================================
+  if(WiFi.status() == WL_CONNECTED){
+    HTTPClient http;
+    http.begin(serverName);
+    http.addHeader("Content-Type", "application/json");
+
+    // Format JSON diubah menjadi suhu & kelembaban agar cocok dengan CI4
+    String httpRequestData = "{\"suhu\":\"" + String(t) + "\",\"kelembaban\":\"" + String(h) + "\"}";
+    
+    int httpResponseCode = http.POST(httpRequestData);
+    
+    if (httpResponseCode > 0) {
+      Serial.print("✅ Berhasil Kirim ke Web! HTTP Code: ");
+      Serial.println(httpResponseCode); // Harusnya muncul 201
+    } else {
+      Serial.print("❌ Gagal Kirim ke Web. Error code: ");
+      Serial.println(httpResponseCode);
+    }
+    http.end();
+  } else {
+    Serial.println("WiFi Terputus...");
+  }
+
+  // Kirim data setiap 5 detik (Jangan terlalu cepat agar web tidak ngelag)
+  delay(5000); 
 }

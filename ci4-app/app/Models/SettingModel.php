@@ -12,10 +12,19 @@ class SettingModel extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = ['setting_key', 'setting_value'];
-
-    protected bool $allowEmptyInserts = false;
+    protected $allowedFields    = ['suhu_min', 'suhu_max', 'kelembaban_min', 'kelembaban_max'];
 
     // Dates
-    protected $useTimestamps = false;
+    protected $useTimestamps = true;
+    protected $dateFormat    = 'datetime';
+    protected $createdField  = 'created_at';
+    protected $updatedField  = 'updated_at';
+
+    // Validation
+    protected $validationRules      = [
+        'suhu_min'       => 'required|numeric',
+        'suhu_max'       => 'required|numeric',
+        'kelembaban_min' => 'required|numeric',
+        'kelembaban_max' => 'required|numeric'
+    ];
 }
